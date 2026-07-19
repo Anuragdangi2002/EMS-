@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "attendance" ADD COLUMN     "isLate" BOOLEAN NOT NULL DEFAULT false,
+ALTER COLUMN "totalHours" SET DEFAULT 0,
+ALTER COLUMN "overtimeHours" SET DEFAULT 0,
+ALTER COLUMN "status" SET DEFAULT 'PRESENT';

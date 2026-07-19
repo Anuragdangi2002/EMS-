@@ -1,0 +1,253 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  DIRECTOR
+  HR
+  MANAGER
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  INTERN
+  CONTRACT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  HOLIDAY
+  WEEK_OFF
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id        String  @id @default(uuid()) @db.Uuid
+  firstName String  @db.VarChar(50)
+  lastName  String  @db.VarChar(50)
+  email     String  @unique @db.VarChar(255)
+  password  String  @db.VarChar(255)
+  phone     String? @db.VarChar(20)
+
+  role   Role       @default(EMPLOYEE)
+  status UserStatus @default(ACTIVE)
+
+  isEmailVerified Boolean @default(false)
+
+  refreshTokenVersion Int @default(0)
+
+  resetPasswordToken   String?   @db.VarChar(64)
+  resetPasswordExpires DateTime?
+
+  lastLogin DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee Employee?
+
+  @@index([email])
+  @@index([resetPasswordToken])
+  @@map("users")
+}
+
+model Department {
+  id String @id @default(uuid()) @db.Uuid
+
+  name String @unique @db.VarChar(100)
+  code String @unique @db.VarChar(20)
+
+  description String? @db.VarChar(255)
+
+  isActive Boolean @default(true)
+
+  employees Employee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("departments")
+}
+
+model Shift {
+  id String @id @default(uuid()) @db.Uuid
+
+  name String @unique @db.VarChar(100)
+
+  startTime String @db.VarChar(10)
+
+  endTime String @db.VarChar(10)
+
+  gracePeriod Int @default(15)
+
+  isActive Boolean @default(true)
+
+  employees Employee[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("shifts")
+}
+
+model Employee {
+  id String @id @default(uuid()) @db.Uuid
+
+  employeeCode String @unique @db.VarChar(20)
+
+  userId String @unique @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firstName String @db.VarChar(50)
+  lastName  String @db.VarChar(50)
+
+  dateOfBirth DateTime
+
+  gender Gender
+
+  joiningDate DateTime
+
+  employmentType EmploymentType
+
+  designation String @db.VarChar(100)
+
+  departmentId String     @db.Uuid
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  shiftId String? @db.Uuid
+  shift   Shift?  @relation(fields: [shiftId], references: [id])
+
+  address String @db.VarChar(255)
+
+  city String @db.VarChar(100)
+
+  state String @db.VarChar(100)
+
+  country String @db.VarChar(100)
+
+  postalCode String @db.VarChar(20)
+
+  profileImageUrl String? @db.VarChar(255)
+
+  isActive Boolean @default(true)
+
+  salary       Float?
+  workFromHome Boolean @default(false)
+  shortLeaves  Int     @default(0)
+
+  managerId    String?    @db.Uuid
+  manager      Employee?  @relation("EmployeeToManager", fields: [managerId], references: [id])
+  subordinates Employee[] @relation("EmployeeToManager")
+
+  attendance Attendance[]
+
+  leaves Leave[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeCode])
+  @@index([departmentId])
+  @@index([shiftId])
+  @@index([managerId])
+  @@map("employees")
+}
+
+model Holiday {
+  id String @id @default(uuid()) @db.Uuid
+
+  title String @db.VarChar(100)
+
+  date DateTime
+
+  description String? @db.VarChar(255)
+
+  isOptional Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@map("holidays")
+}
+
+model Attendance {
+  id String @id @default(uuid()) @db.Uuid
+
+  employeeId String   @db.Uuid
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  date DateTime
+
+  checkIn DateTime?
+
+  checkOut DateTime?
+
+  totalHours Float? @default(0)
+
+  overtimeHours Float? @default(0)
+
+  status AttendanceStatus @default(PRESENT)
+
+  isLate Boolean @default(false)
+
+  remarks String? @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+  @@map("attendance")
+}
+
+model Leave {
+  id String @id @default(uuid()) @db.Uuid
+
+  employeeId String   @db.Uuid
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  startDate DateTime
+
+  endDate DateTime
+
+  reason String @db.VarChar(255)
+
+  status LeaveStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@map("leaves")
+}
