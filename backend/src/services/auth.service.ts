@@ -16,6 +16,7 @@ import {
 import { sanitizeUser, UserDTO } from '../utils/response.util';
 import { Messages } from '../constants/messages';
 import { logger } from '../utils/logger.util';
+import { emailService } from './email';
 
 export class AuthService {
   /**
@@ -180,9 +181,8 @@ export class AuthService {
   async forgotPassword(email: string): Promise<void> {
     const user = await userRepository.findByEmail(email);
     if (!user) {
-      // Security prevention: do not leak if email exists or not
       logger.warn(`Password reset requested for non-existing email: ${email}`);
-      return;
+      throw new NotFoundError("Email does not exist or wrong email");
     }
 
     const rawToken = generateRandomToken();
@@ -194,8 +194,8 @@ export class AuthService {
       resetPasswordExpires: expiry
     });
 
-    // Email client simulated by writing to stdout log as requested
-    logger.info(`✉️ [SIMULATED EMAIL] Password reset token for ${email}: ${rawToken}`);
+    const resetLink = `http://localhost:5173/reset-password?token=${rawToken}`;
+    emailService.sendPasswordResetEmail(email, resetLink);
   }
 
   /**

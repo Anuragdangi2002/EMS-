@@ -30,6 +30,13 @@ export class AttendanceRepository {
         employeeId,
         date,
       },
+      include: {
+        logs: {
+          orderBy: {
+            timestamp: "asc",
+          },
+        },
+      },
     });
   }
 
@@ -48,6 +55,11 @@ export class AttendanceRepository {
     return prisma.attendance.findMany({
       include: {
         employee: true,
+        logs: {
+          orderBy: {
+            timestamp: "asc",
+          },
+        },
       },
       orderBy: {
         date: "desc",
@@ -59,6 +71,13 @@ export class AttendanceRepository {
     return prisma.attendance.findMany({
       where: {
         employeeId,
+      },
+      include: {
+        logs: {
+          orderBy: {
+            timestamp: "asc",
+          },
+        },
       },
       orderBy: {
         date: "desc",

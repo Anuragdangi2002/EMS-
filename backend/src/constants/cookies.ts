@@ -11,6 +11,6 @@ export const getCookieOptions = (maxAgeMs: number): CookieOptions => {
     secure: env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: maxAgeMs,
-    path: '/api/v1/auth' // Scoped strictly to authentication endpoints for security
+    path: '/'
   };
 };

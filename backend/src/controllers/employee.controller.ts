@@ -164,6 +164,27 @@ getCurrentEmployee = async (
   }
 };
 
+/**
+ * Get logged in employee's team and manager details.
+ */
+getMyTeam = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const team = await employeeService.getMyTeam(req.user);
+    sendSuccess(
+      res,
+      { team },
+      "My team retrieved successfully",
+      HttpStatus.OK
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 }
 
 export const employeeController = new EmployeeController();

@@ -160,6 +160,8 @@ model Employee {
   salary       Float?
   workFromHome Boolean @default(false)
   shortLeaves  Int     @default(0)
+  allocatedLeaves Float @default(20)
+  leaveBalance    Float @default(20)
 
   managerId    String?    @db.Uuid
   manager      Employee?  @relation("EmployeeToManager", fields: [managerId], references: [id])
@@ -224,10 +226,22 @@ model Attendance {
 
   updatedAt DateTime @updatedAt
 
+  logs       AttendanceLog[]
+
   @@unique([employeeId, date])
   @@index([employeeId])
   @@index([date])
   @@map("attendance")
+}
+
+model AttendanceLog {
+  id           String     @id @default(uuid()) @db.Uuid
+  attendanceId String     @db.Uuid
+  attendance   Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  type         String     @db.VarChar(10) // "CHECK_IN" or "CHECK_OUT"
+  timestamp    DateTime   @default(now())
+
+  @@map("attendance_logs")
 }
 
 model Leave {

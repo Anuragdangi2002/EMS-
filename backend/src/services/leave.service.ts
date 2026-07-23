@@ -112,7 +112,28 @@ export class LeaveService {
       }
     }
 
-    return leaveRepository.updateStatus(id, status);
+    const oldStatus = leave.status;
+    const updatedLeave = await leaveRepository.updateStatus(id, status);
+
+    if (oldStatus !== LeaveStatus.APPROVED && status === LeaveStatus.APPROVED) {
+      // Deduct leaves
+      const days = Math.ceil(Math.abs(leave.endDate.getTime() - leave.startDate.getTime()) / (1000 * 3600 * 24)) + 1;
+      const { prisma } = await import("../config/prisma");
+      await prisma.employee.update({
+        where: { id: leave.employeeId },
+        data: { leaveBalance: { decrement: days } }
+      });
+    } else if (oldStatus === LeaveStatus.APPROVED && status !== LeaveStatus.APPROVED) {
+      // Refund leaves
+      const days = Math.ceil(Math.abs(leave.endDate.getTime() - leave.startDate.getTime()) / (1000 * 3600 * 24)) + 1;
+      const { prisma } = await import("../config/prisma");
+      await prisma.employee.update({
+        where: { id: leave.employeeId },
+        data: { leaveBalance: { increment: days } }
+      });
+    }
+
+    return updatedLeave;
   }
 }
 

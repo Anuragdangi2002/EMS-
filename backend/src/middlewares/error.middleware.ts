@@ -19,15 +19,21 @@ export const errorHandler = (
 ): void => {
   let error = err;
 
-  // Log full stack details using Winston logger
-  logger.error(err.stack || err.message || err);
-
   // Translate database/Prisma errors
   error = handlePrismaError(error);
 
   // Translate JWT encoding/decoding errors
   if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError) {
     error = new AppError(Messages.AUTH.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+  }
+
+  // Log appropriately based on operational classification
+  if (error instanceof AppError) {
+    // Log expected client-side / operational warnings as simple messages to keep logs clean
+    logger.warn(`Operational warning [${error.statusCode}]: ${error.message}`);
+  } else {
+    // Log unexpected 500 crashes with full stack trace
+    logger.error(err.stack || err.message || err);
   }
 
   // Handle expected operational errors

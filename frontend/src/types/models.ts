@@ -1,10 +1,12 @@
-export type Role = 'ADMIN' | 'HR' | 'MANAGER' | 'EMPLOYEE'
+export type Role = 'ADMIN' | 'HR' | 'MANAGER' | 'EMPLOYEE' | 'DIRECTOR'
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY' | 'HOLIDAY' | 'WEEK_OFF'
 export type User = { id: string; firstName: string; lastName: string; email: string; phone: string | null; role: Role; status: 'ACTIVE' | 'INACTIVE'; isEmailVerified: boolean; lastLogin: string | null; createdAt: string; updatedAt: string }
 export type Department = { id: string; name: string; code: string; description: string | null; isActive: boolean; createdAt: string; updatedAt: string }
 export type Shift = { id: string; name: string; startTime: string; endTime: string; gracePeriod: number; isActive: boolean; createdAt: string; updatedAt: string }
-export type Employee = { id: string; employeeCode: string; userId: string; firstName: string; lastName: string; dateOfBirth: string; gender: 'MALE' | 'FEMALE' | 'OTHER'; joiningDate: string; employmentType: 'FULL_TIME' | 'PART_TIME' | 'INTERN' | 'CONTRACT'; designation: string; departmentId: string; shiftId: string | null; managerId: string | null; address: string; city: string; state: string; country: string; postalCode: string; profileImageUrl: string | null; isActive: boolean; createdAt: string; updatedAt: string }
-export type Attendance = { id: string; employeeId: string; date: string; checkIn: string | null; checkOut: string | null; totalHours: number | null; overtimeHours: number | null; status: AttendanceStatus; isLate: boolean; remarks: string | null; employee?: Employee }
+export type Employee = { id: string; employeeCode: string; userId: string; firstName: string; lastName: string; dateOfBirth: string; gender: 'MALE' | 'FEMALE' | 'OTHER'; joiningDate: string; employmentType: 'FULL_TIME' | 'PART_TIME' | 'INTERN' | 'CONTRACT'; designation: string; departmentId: string; shiftId: string | null; managerId: string | null; address: string; city: string; state: string; country: string; postalCode: string; profileImageUrl: string | null; isActive: boolean; allocatedLeaves?: number; leaveBalance?: number; createdAt: string; updatedAt: string }
+export type AttendanceLog = { id: string; attendanceId: string; type: 'CHECK_IN' | 'CHECK_OUT'; timestamp: string }
+export type Attendance = { id: string; employeeId: string; date: string; checkIn: string | null; checkOut: string | null; totalHours: number | null; overtimeHours: number | null; status: AttendanceStatus; isLate: boolean; remarks: string | null; employee?: Employee; logs?: AttendanceLog[] }
 export type Leave = { id: string; employeeId: string; startDate: string; endDate: string; reason: string; status: LeaveStatus; createdAt: string; updatedAt: string; employee?: Employee }
+export type Holiday = { id: string; title: string; date: string; description: string | null; isOptional: boolean; createdAt: string; updatedAt: string }
 export type Dashboard = { totalEmployees: number; activeEmployees: number; departments: number; shifts: number; presentToday: number; lateToday: number; absentToday: number; employeesOnLeave: number }

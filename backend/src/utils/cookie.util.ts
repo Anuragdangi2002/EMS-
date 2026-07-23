@@ -12,5 +12,6 @@ export const setRefreshTokenCookie = (res: Response, token: string, maxAgeMs: nu
  * Clears the Refresh Token HttpOnly Cookie from the response.
  */
 export const clearRefreshTokenCookie = (res: Response): void => {
-  res.clearCookie(CookieNames.REFRESH_TOKEN, getCookieOptions(0));
+  res.clearCookie(CookieNames.REFRESH_TOKEN, { ...getCookieOptions(0), path: '/' });
+  res.clearCookie(CookieNames.REFRESH_TOKEN, { ...getCookieOptions(0), path: '/api/v1/auth' });
 };

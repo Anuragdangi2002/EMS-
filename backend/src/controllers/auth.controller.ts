@@ -94,6 +94,7 @@ export class AuthController {
         HttpStatus.OK
       );
     } catch (error) {
+      clearRefreshTokenCookie(res);
       next(error);
     }
   };

@@ -24,6 +24,7 @@ export class EmployeeRepository {
           select: {
             email: true,
             phone: true,
+            role: true,
           },
         },
       },
@@ -46,6 +47,7 @@ export class EmployeeRepository {
           select: {
             email: true,
             phone: true,
+            role: true,
           },
         },
       },
@@ -65,6 +67,7 @@ export class EmployeeRepository {
           select: {
             email: true,
             phone: true,
+            role: true,
           },
         },
       },
@@ -84,6 +87,7 @@ export class EmployeeRepository {
           select: {
             email: true,
             phone: true,
+            role: true,
           },
         },
       },

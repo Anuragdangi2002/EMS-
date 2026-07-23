@@ -71,6 +71,12 @@ export function LeavesPage() {
   const { hasRole } = useAuth();
   const client = useQueryClient();
   const [applyOpen, setApplyOpen] = useState(false);
+  const profile = useQuery({
+    queryKey: ['employee', 'me'],
+    queryFn: employeeService.me,
+    enabled: !hasRole('ADMIN', 'HR'),
+    retry: false
+  });
   const leaves = useQuery({
     queryKey: ['leaves'],
     queryFn: leaveService.list
@@ -80,6 +86,7 @@ export function LeavesPage() {
       leaveService.status(id, state),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['leaves'] });
+      void client.invalidateQueries({ queryKey: ['employee', 'me'] });
       toast.success('Leave status updated');
     },
     onError: () => toast.error('Unable to update leave status')
@@ -88,7 +95,21 @@ export function LeavesPage() {
     {
       id: 'employee',
       header: 'Employee',
-      cell: x => x.row.original.employee ? `${x.row.original.employee.firstName} ${x.row.original.employee.lastName}` : x.row.original.employeeId
+      cell: x => {
+        const emp = x.row.original.employee;
+        if (!emp) return x.row.original.employeeId;
+        const name = `${emp.firstName} ${emp.lastName}`;
+        return (
+          <div className="text-left">
+            <span className="font-semibold text-slate-800">{name}</span>
+            {hasRole('ADMIN', 'HR') && (
+              <span className="text-xs text-slate-500 block font-medium">
+                Balance: {emp.leaveBalance ?? 20} / {emp.allocatedLeaves ?? 20} days
+              </span>
+            )}
+          </div>
+        );
+      }
     },
     {
       accessorKey: 'startDate',
@@ -128,6 +149,22 @@ export function LeavesPage() {
         description={hasRole('ADMIN', 'HR', 'MANAGER') ? 'Review and process employee leave requests.' : 'Submit time-off requests.'}
         actions={!hasRole('ADMIN', 'HR', 'MANAGER') ? <Button onClick={() => setApplyOpen(true)}><Plus className="size-4" />Apply for leave</Button> : undefined}
       />
+      {!hasRole('ADMIN', 'HR') && profile.data && (
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <Card className="bg-blue-50/50 border border-blue-100 p-4 text-left">
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">Allocated Leaves</p>
+            <p className="mt-2 text-2xl font-bold text-blue-900">{profile.data.allocatedLeaves ?? 20} days</p>
+          </Card>
+          <Card className="bg-emerald-50/50 border border-emerald-100 p-4 text-left">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Remaining Balance</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-900">{profile.data.leaveBalance ?? 20} days</p>
+          </Card>
+          <Card className="bg-slate-50/50 border border-slate-100 p-4 text-left">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Used Leaves</p>
+            <p className="mt-2 text-2xl font-bold text-slate-800">{((profile.data.allocatedLeaves ?? 20) - (profile.data.leaveBalance ?? 20)).toFixed(1)} days</p>
+          </Card>
+        </div>
+      )}
       <Card title={hasRole('ADMIN', 'HR', 'MANAGER') ? undefined : "Your leave requests"}>
         {leaves.isLoading ? (
           <Empty>Loading leave requests…</Empty>

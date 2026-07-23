@@ -1,25 +1,28 @@
 import { useState, type ReactNode } from 'react'
-import { BarChart3, Building2, CalendarClock, ChevronLeft, ClipboardCheck, LayoutDashboard, LogOut, Menu, Settings, Users } from 'lucide-react'
+import { BarChart3, Building2, Calendar, CalendarClock, ChevronLeft, ClipboardCheck, LayoutDashboard, LogOut, Menu, Settings, Users } from 'lucide-react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../store/auth-context'
+import type { Role } from '../types/models'
 import { cn } from '../components/ui'
 import { initials, title } from '../utils/format'
 
 const nav = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard, roles: ['ADMIN', 'HR', 'MANAGER'] as string[] },
-  { to: '/employees', label: 'Employees', icon: Users, roles: ['ADMIN', 'HR', 'MANAGER'] as string[] },
-  { to: '/departments', label: 'Departments', icon: Building2, roles: ['ADMIN', 'HR'] as string[] },
-  { to: '/shifts', label: 'Shifts', icon: CalendarClock, roles: ['ADMIN', 'HR'] as string[] },
-  { to: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'] as string[] },
-  { to: '/leaves', label: 'Leave management', icon: BarChart3, roles: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'] as string[] },
-  { to: '/profile', label: 'My profile', icon: Users, roles: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'] as string[] },
-  { to: '/settings', label: 'Settings', icon: Settings, roles: ['ADMIN'] as string[] }
+  { to: '/', label: 'Overview', icon: LayoutDashboard, roles: ['ADMIN', 'HR', 'MANAGER'] as Role[] },
+  { to: '/employees', label: 'Employees', icon: Users, roles: ['ADMIN', 'HR', 'MANAGER'] as Role[] },
+  { to: '/departments', label: 'Departments', icon: Building2, roles: ['ADMIN', 'HR'] as Role[] },
+  { to: '/shifts', label: 'Shifts', icon: CalendarClock, roles: ['ADMIN', 'HR'] as Role[] },
+  { to: '/attendance', label: 'Attendance', icon: ClipboardCheck, roles: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'] as Role[] },
+  { to: '/leaves', label: 'Leave management', icon: BarChart3, roles: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'] as Role[] },
+  { to: '/holidays', label: 'Calendar / Holidays', icon: Calendar, roles: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'] as Role[] },
+  { to: '/team', label: 'My Team', icon: Users, roles: ['MANAGER', 'EMPLOYEE'] as Role[] },
+  { to: '/profile', label: 'My profile', icon: Users, roles: ['ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'] as Role[] },
+  { to: '/settings', label: 'Settings', icon: Settings, roles: ['ADMIN'] as Role[] }
 ] as const
 
 export function AppLayout() {
-  const { user, logout } = useAuth(); const [open, setOpen] = useState(false); const location = useLocation()
+  const { user, logout, hasRole } = useAuth(); const [open, setOpen] = useState(false); const location = useLocation()
   if (!user) return null
-  const links = nav.filter(item => item.roles.includes(user.role))
+  const links = nav.filter(item => hasRole(...item.roles))
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <aside className={cn('fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0', open ? 'translate-x-0' : '-translate-x-full')}>
       <div className="flex h-16 items-center gap-3 border-b border-slate-100 px-6"><div className="grid size-8 place-items-center rounded-lg bg-blue-700 font-bold text-white">P</div><span className="font-bold tracking-tight">PeopleOps</span><button onClick={() => setOpen(false)} className="ml-auto lg:hidden"><ChevronLeft className="size-5" /></button></div>

@@ -6,6 +6,17 @@ export type ApiEnvelope<T> = { success: boolean; message: string; data: T }
 let accessToken = sessionStorage.getItem('ems_access_token')
 let refreshPromise: Promise<string | null> | null = null
 
+type AuthErrorListener = () => void
+let authErrorListener: AuthErrorListener | null = null
+
+export const onAuthError = (listener: AuthErrorListener) => {
+  authErrorListener = listener
+}
+
+export const triggerAuthError = () => {
+  if (authErrorListener) authErrorListener()
+}
+
 export const getAccessToken = () => accessToken
 export const setAccessToken = (token: string | null) => {
   accessToken = token
@@ -20,27 +31,64 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
+  }
   return config
 })
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const request = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
-    if (error.response?.status !== 401 || request?._retry || request?.url?.includes(ENDPOINTS.auth.refresh)) return Promise.reject(error)
-    request._retry = true
+    const request = error.config as InternalAxiosRequestConfig
+    if (!request) return Promise.reject(error)
+
+    // Check if it is a 401 error
+    if (error.response?.status !== 401) return Promise.reject(error)
+
+    // Exclude public authentication endpoints from retry logic
+    const isPublicAuthEndpoint =
+      request.url?.includes(ENDPOINTS.auth.login) ||
+      request.url?.includes(ENDPOINTS.auth.register) ||
+      request.url?.includes(ENDPOINTS.auth.forgotPassword) ||
+      request.url?.includes(ENDPOINTS.auth.resetPassword) ||
+      request.url?.includes(ENDPOINTS.auth.refresh)
+
+    if (isPublicAuthEndpoint) {
+      return Promise.reject(error)
+    }
+
+    // Check if we have already retried this request using custom HTTP header 'x-retry'
+    // Custom headers are preserved by Axios when cloning config objects.
+    if (request.headers?.['x-retry']) {
+      return Promise.reject(error)
+    }
+
+    // Only attempt token refresh if the original request was sent with an access token
+    if (!accessToken) {
+      return Promise.reject(error)
+    }
+
     try {
-      refreshPromise ??= api.post<ApiEnvelope<{ accessToken: string }>>(ENDPOINTS.auth.refresh).then(({ data }) => data.data.accessToken).catch(() => null).finally(() => { refreshPromise = null })
+      request.headers = request.headers || {}
+      request.headers['x-retry'] = 'true'
+
+      // Deduplicate concurrent token refresh API calls
+      refreshPromise ??= api.post<ApiEnvelope<{ accessToken: string }>>(ENDPOINTS.auth.refresh)
+        .then(({ data }) => data.data.accessToken)
+        .catch(() => null)
+        .finally(() => { refreshPromise = null })
+
       const token = await refreshPromise
       if (!token) throw error
+
       setAccessToken(token)
       request.headers.Authorization = `Bearer ${token}`
       return api(request)
-    } catch {
+    } catch (err) {
       setAccessToken(null)
-      if (!location.pathname.startsWith('/login')) location.assign('/login')
-      return Promise.reject(error)
+      triggerAuthError()
+      return Promise.reject(err)
     }
   }
 )

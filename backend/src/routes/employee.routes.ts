@@ -47,6 +47,15 @@ router.get(
 );
 
 /**
+ * Get Logged-in Employee's Team
+ */
+router.get(
+  "/my-team",
+  authenticate,
+  employeeController.getMyTeam
+);
+
+/**
  * Get Employee By ID
  * Only ADMIN and HR
  */

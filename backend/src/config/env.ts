@@ -15,7 +15,19 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
   CORS_ORIGIN: z.string().default('*'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000), // 15 minutes
-  RATE_LIMIT_MAX: z.coerce.number().default(100)
+  RATE_LIMIT_MAX: z.coerce.number().default(100),
+  SMTP_HOST: z.string().min(1, 'SMTP_HOST is required'),
+  SMTP_PORT: z.coerce.number().int().positive('SMTP_PORT must be a positive integer'),
+  SMTP_SECURE: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(false),
+  SMTP_USERNAME: z.string().min(1, 'SMTP_USERNAME is required'),
+  SMTP_PASSWORD: z.string().min(1, 'SMTP_PASSWORD is required'),
+  SMTP_FROM_EMAIL: z.string().email('SMTP_FROM_EMAIL must be a valid email'),
+  SMTP_FROM_NAME: z.string().min(1, 'SMTP_FROM_NAME is required'),
+  SMTP_REPLY_TO: z.string().email('SMTP_REPLY_TO must be a valid email').optional(),
+  SMTP_CONNECTION_TIMEOUT: z.coerce.number().int().positive().default(5000),
+  SMTP_SOCKET_TIMEOUT: z.coerce.number().int().positive().default(5000),
+  SMTP_POOL_MAX_CONNECTIONS: z.coerce.number().int().positive().default(5),
+  SMTP_POOL_MAX_MESSAGES: z.coerce.number().int().positive().default(100)
 });
 
 const parsed = envSchema.safeParse(process.env);

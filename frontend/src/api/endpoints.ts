@@ -5,5 +5,6 @@ export const ENDPOINTS = {
   shifts: '/shifts',
   attendance: { base: '/attendance', checkIn: '/attendance/check-in', checkOut: '/attendance/check-out', employee: (id: string) => `/attendance/employee/${id}` },
   leaves: '/leaves',
-  dashboard: '/dashboard'
+  dashboard: '/dashboard',
+  holidays: '/holidays'
 } as const

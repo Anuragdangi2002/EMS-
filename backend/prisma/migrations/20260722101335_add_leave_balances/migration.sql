@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "employees" ADD COLUMN     "allocatedLeaves" DOUBLE PRECISION NOT NULL DEFAULT 20,
+ADD COLUMN     "leaveBalance" DOUBLE PRECISION NOT NULL DEFAULT 20;

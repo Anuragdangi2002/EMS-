@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,7 +12,7 @@ import { Button, Card, Input, Badge, Empty } from '../components/ui'
 import { DataTable } from '../components/data-table'
 import { PageHeader } from '../layouts/app-layout'
 import { departmentService, employeeService } from '../services/ems.service'
-import type { Employee, Role, User } from '../types/models'
+import type { Employee, User } from '../types/models'
 import { date, title } from '../utils/format'
 import { useAuth } from '../store/auth-context'
 
@@ -46,13 +46,16 @@ const employeeSchema = z.object({
   state: required('State'),
   country: required('Country'),
   postalCode: required('Postal code').regex(/^[A-Za-z0-9][A-Za-z0-9 -]{2,11}$/, 'Enter a valid postal code'),
-  managerId: z.string().optional().nullable()
+  managerId: z.string().optional().nullable(),
+  role: z.enum(['EMPLOYEE', 'MANAGER', 'HR', 'ADMIN']),
+  allocatedLeaves: z.string().optional().or(z.literal('')),
+  leaveBalance: z.string().optional().or(z.literal(''))
 })
 
 type EmployeeForm = z.infer<typeof employeeSchema>
-type EmployeeWithContact = Employee & { email?: string; phone?: string | null; user?: Pick<User, 'email' | 'phone'> }
+type EmployeeWithContact = Employee & { email?: string; phone?: string | null; user?: Pick<User, 'email' | 'phone' | 'role'> }
 
-const defaults: EmployeeForm = { employeeCode: '', firstName: '', lastName: '', email: '', password: '', phone: '', dateOfBirth: '', gender: 'OTHER', joiningDate: new Date().toISOString().slice(0, 10), employmentType: 'FULL_TIME', designation: '', department: '', address: '', city: '', state: '', country: '', postalCode: '', managerId: '' }
+const defaults: EmployeeForm = { employeeCode: '', firstName: '', lastName: '', email: '', password: '', phone: '', dateOfBirth: '', gender: 'OTHER', joiningDate: new Date().toISOString().slice(0, 10), employmentType: 'FULL_TIME', designation: '', department: '', address: '', city: '', state: '', country: '', postalCode: '', managerId: '', role: 'EMPLOYEE', allocatedLeaves: '20', leaveBalance: '20' }
 
 function messageFrom(error: unknown, fallback: string) {
   const message = (error as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -92,7 +95,10 @@ function EmployeeModal({ employee, close }: { employee?: EmployeeWithContact; cl
         state: employee.state,
         country: employee.country,
         postalCode: employee.postalCode,
-        managerId: employee.managerId ?? ''
+        managerId: employee.managerId ?? '',
+        role: employee.user?.role === 'DIRECTOR' ? 'ADMIN' : (employee.user?.role ?? 'EMPLOYEE'),
+        allocatedLeaves: String(employee.allocatedLeaves ?? 20),
+        leaveBalance: String(employee.leaveBalance ?? 20)
       }
     }
     return defaults
@@ -102,10 +108,18 @@ function EmployeeModal({ employee, close }: { employee?: EmployeeWithContact; cl
 
   const saving = useMutation({
     mutationFn: async (values: EmployeeForm) => {
+      const targetRole = values.role === 'ADMIN' ? 'DIRECTOR' : values.role
+      const { email: _email, password: _password, ...employeeData } = values
+      const leaveFields = {
+        allocatedLeaves: values.allocatedLeaves ? parseFloat(values.allocatedLeaves) : 20,
+        leaveBalance: values.leaveBalance ? parseFloat(values.leaveBalance) : 20
+      }
       if (isEdit) {
-        const { email: _email, password: _password, ...employeeData } = values
         const res = await employeeService.update(employee.id, {
           ...employeeData,
+          ...leaveFields,
+          role: targetRole,
+          managerId: employeeData.managerId || null,
           profileImageUrl
         })
         return { employee: res, message: 'Employee updated successfully' }
@@ -116,9 +130,16 @@ function EmployeeModal({ employee, close }: { employee?: EmployeeWithContact; cl
         if (!values.password || values.password.length < 8) {
           throw new Error('Temporary password must be at least 8 characters')
         }
-        const accountResponse = await api.post<ApiEnvelope<{ user: User }>>(ENDPOINTS.auth.register, { email: values.email, password: values.password, firstName: values.firstName, lastName: values.lastName, phone: values.phone, role: 'EMPLOYEE' satisfies Role })
-        const { email: _email, password: _password, ...employeeData } = values
-        const employeeResponse = await api.post<ApiEnvelope<{ employee: Employee }>>(ENDPOINTS.employees, { ...employeeData, userId: accountResponse.data.data.user.id, profileImageUrl })
+        const accountResponse = await api.post<ApiEnvelope<{ user: User }>>(ENDPOINTS.auth.register, { email: values.email, password: values.password, firstName: values.firstName, lastName: values.lastName, phone: values.phone, role: targetRole })
+        const { role: _r, ...pureEmployeeData } = employeeData
+        const employeeResponse = await api.post<ApiEnvelope<{ employee: Employee }>>(ENDPOINTS.employees, {
+          ...pureEmployeeData,
+          ...leaveFields,
+          role: targetRole,
+          userId: accountResponse.data.data.user.id,
+          managerId: employeeData.managerId || null,
+          profileImageUrl
+        })
         return { employee: employeeResponse.data.data.employee, message: employeeResponse.data.message }
       }
     },
@@ -142,18 +163,35 @@ function EmployeeModal({ employee, close }: { employee?: EmployeeWithContact; cl
   const pickImage = (file?: File) => {
     setImageError(undefined)
     if (!file) { setProfileImageUrl(undefined); return }
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setProfileImageUrl(undefined); setImageError('Use a JPG, JPEG, PNG, or WEBP image'); return }
-    if (file.size > 5 * 1024 * 1024) { setProfileImageUrl(undefined); setImageError('Profile image must be 5 MB or smaller'); return }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setProfileImageUrl(undefined)
+      const err = 'Use a JPG, JPEG, PNG, or WEBP image'
+      setImageError(err)
+      toast.error(err)
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setProfileImageUrl(undefined)
+      const err = 'Profile image must be 2 MB or smaller'
+      setImageError(err)
+      toast.error(err)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => setProfileImageUrl(typeof reader.result === 'string' ? reader.result : undefined)
-    reader.onerror = () => { setProfileImageUrl(undefined); setImageError('Unable to read the selected image') }
+    reader.onerror = () => {
+      setProfileImageUrl(undefined)
+      const err = 'Unable to read the selected image'
+      setImageError(err)
+      toast.error(err)
+    }
     reader.readAsDataURL(file)
   }
   const field = (name: keyof EmployeeForm, label: string, type = 'text') => <FormField label={label} error={form.formState.errors[name]?.message}><Input className="mt-1.5" type={type} disabled={saving.isPending} {...form.register(name)} /></FormField>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-4xl rounded-xl bg-white shadow-2xl transition-all border border-slate-100 max-h-[90vh] flex flex-col">
+      <form onSubmit={form.handleSubmit(values => saving.mutate(values))} className="relative w-full max-w-4xl rounded-xl bg-white shadow-2xl transition-all border border-slate-100 max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
             <h2 className="font-semibold text-slate-955">{isEdit ? 'Edit employee' : 'Add employee'}</h2>
@@ -163,7 +201,7 @@ function EmployeeModal({ employee, close }: { employee?: EmployeeWithContact; cl
             <X className="size-5" />
           </button>
         </div>
-        <form className="space-y-6 p-6 overflow-y-auto flex-1 text-left" onSubmit={form.handleSubmit(values => saving.mutate(values))}>
+        <div className="space-y-6 p-6 overflow-y-auto flex-1 text-left">
           {!isEdit && (
             <div>
               <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Account</p>
@@ -206,15 +244,25 @@ function EmployeeModal({ employee, close }: { employee?: EmployeeWithContact; cl
                   ))}
                 </select>
               </FormField>
+              <FormField label="System Role" error={form.formState.errors.role?.message}>
+                <select className={selectClass} disabled={saving.isPending} {...form.register('role')}>
+                  <option value="EMPLOYEE">Employee</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="HR">HR</option>
+                  <option value="ADMIN">Director (Admin)</option>
+                </select>
+              </FormField>
+              {field('allocatedLeaves', 'Allocated leaves (per year)', 'number')}
+              {field('leaveBalance', 'Current leave balance', 'number')}
             </div>
           </div>
           <div>
             <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-500">Address</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {field('address', 'Address')}
-              {field('city', 'City')}
-              {field('state', 'State')}
-              {field('country', 'Country')}
+              <SearchableInput label="City" name="city" suggestions={CITIES_LIST} form={form} disabled={saving.isPending} />
+              <SearchableInput label="State" name="state" suggestions={STATES_LIST} form={form} disabled={saving.isPending} />
+              <SearchableInput label="Country" name="country" suggestions={COUNTRIES_LIST} form={form} disabled={saving.isPending} />
               {field('postalCode', 'Postal code')}
               <FormField label="Upload profile image" error={imageError}>
                 <Input className="mt-1.5" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={saving.isPending} onChange={event => pickImage(event.target.files?.[0])} />
@@ -222,12 +270,12 @@ function EmployeeModal({ employee, close }: { employee?: EmployeeWithContact; cl
               </FormField>
             </div>
           </div>
-        </form>
+        </div>
         <div className="flex justify-end gap-3 border-t p-5 bg-slate-50 rounded-b-xl">
           <Button type="button" variant="outline" onClick={close} disabled={saving.isPending}>Cancel</Button>
           <Button type="submit" loading={saving.isPending}>{isEdit ? 'Save changes' : 'Create employee'}</Button>
         </div>
-      </div>
+      </form>
     </div>
   )
 }
@@ -281,6 +329,8 @@ function EmployeeDetailsModal({ employee: initialEmployee, close }: { employee?:
     ['Department', department ?? 'Not available'],
     ['Designation', employee.designation],
     ['Manager', managerName],
+    ['Leave balance', `${employee.leaveBalance ?? 20} / ${employee.allocatedLeaves ?? 20} days`],
+    ['System Role', title(employee.user?.role ?? 'EMPLOYEE')],
     ['Employment type', title(employee.employmentType)],
     ['Gender', title(employee.gender)],
     ['Date of birth', date(employee.dateOfBirth)],
@@ -402,4 +452,170 @@ export function EmployeesPage() {
       {selectedEmployee && <EmployeeDetailsModal employee={selectedEmployee} close={() => setSelectedEmployee(undefined)} />}
     </>
   )
+}
+
+const COUNTRIES_LIST = [
+  "India",
+  "United States",
+  "United Kingdom",
+  "Canada",
+  "Australia",
+  "Germany",
+  "France",
+  "United Arab Emirates",
+  "Singapore",
+  "Japan",
+  "Netherlands",
+  "Switzerland",
+  "New Zealand",
+  "Ireland",
+  "South Africa",
+  "Saudi Arabia",
+  "Qatar",
+  "Oman",
+  "Kuwait"
+];
+
+const STATES_LIST = [
+  // India
+  "Delhi",
+  "Maharashtra",
+  "Karnataka",
+  "Telangana",
+  "Tamil Nadu",
+  "Uttar Pradesh",
+  "Gujarat",
+  "Rajasthan",
+  "Haryana",
+  "Punjab",
+  "Madhya Pradesh",
+  "Bihar",
+  "West Bengal",
+  "Kerala",
+  "Andhra Pradesh",
+  "Goa",
+  "Assam",
+  "Odisha",
+  // US
+  "California",
+  "Texas",
+  "New York",
+  "Florida",
+  "Illinois",
+  "Pennsylvania",
+  "Ohio",
+  "Georgia",
+  "North Carolina",
+  "Michigan",
+  "Washington"
+];
+
+const CITIES_LIST = [
+  // India
+  "Mumbai",
+  "Delhi",
+  "Bangalore",
+  "Hyderabad",
+  "Chennai",
+  "Kolkata",
+  "Pune",
+  "Ahmedabad",
+  "Jaipur",
+  "Lucknow",
+  "Noida",
+  "Gurugram",
+  "Chandigarh",
+  "Indore",
+  "Bhopal",
+  "Patna",
+  "Kochi",
+  "Visakhapatnam",
+  // US
+  "New York City",
+  "Los Angeles",
+  "Chicago",
+  "Houston",
+  "Phoenix",
+  "Philadelphia",
+  "San Antonio",
+  "San Diego",
+  "Dallas",
+  "San Jose",
+  "Austin",
+  "San Francisco",
+  "Seattle"
+];
+
+function SearchableInput({
+  label,
+  name,
+  suggestions,
+  form,
+  disabled
+}: {
+  label: string;
+  name: any;
+  suggestions: string[];
+  form: any;
+  disabled?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const value = form.watch(name) || "";
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = query
+    ? suggestions.filter(s => s.toLowerCase().includes(query.toLowerCase()))
+    : suggestions;
+
+  return (
+    <div ref={wrapperRef} className="relative text-left">
+      <FormField label={label} error={form.formState.errors[name]?.message}>
+        <div className="relative mt-1.5">
+          <Input
+            type="text"
+            disabled={disabled}
+            placeholder={`Select or type ${label.toLowerCase()}...`}
+            value={value}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              form.setValue(name, e.target.value, { shouldValidate: true });
+              setIsOpen(true);
+            }}
+            onFocus={() => {
+              setQuery(value);
+              setIsOpen(true);
+            }}
+          />
+          {isOpen && filtered.length > 0 && (
+            <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 text-sm shadow-lg ring-1 ring-black/5 outline-none">
+              {filtered.slice(0, 100).map((item, idx) => (
+                <li
+                  key={idx}
+                  onClick={() => {
+                    form.setValue(name, item, { shouldValidate: true });
+                    setQuery(item);
+                    setIsOpen(false);
+                  }}
+                  className="relative cursor-pointer select-none px-4 py-2.5 hover:bg-slate-100 text-slate-800 font-normal transition-colors"
+                >
+                  {item}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </FormField>
+    </div>
+  );
 }

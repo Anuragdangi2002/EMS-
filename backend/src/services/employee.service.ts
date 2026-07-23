@@ -106,6 +106,10 @@ export class EmployeeService {
 
       shortLeaves: data.shortLeaves ? parseInt(data.shortLeaves) : 0,
 
+      allocatedLeaves: data.allocatedLeaves !== undefined ? parseFloat(data.allocatedLeaves) : 20,
+
+      leaveBalance: data.leaveBalance !== undefined ? parseFloat(data.leaveBalance) : (data.allocatedLeaves !== undefined ? parseFloat(data.allocatedLeaves) : 20),
+
       manager: data.managerId
         ? {
             connect: {
@@ -133,6 +137,15 @@ export class EmployeeService {
         where: {
           isActive: true,
           managerId: managerEmployee.id,
+        },
+        include: {
+          user: {
+            select: {
+              email: true,
+              phone: true,
+              role: true,
+            },
+          },
         },
         orderBy: {
           createdAt: "desc",
@@ -214,6 +227,8 @@ export class EmployeeService {
       salary: data.salary !== undefined ? (data.salary ? parseFloat(data.salary) : null) : undefined,
       workFromHome: data.workFromHome,
       shortLeaves: data.shortLeaves !== undefined ? parseInt(data.shortLeaves) : undefined,
+      allocatedLeaves: data.allocatedLeaves !== undefined ? parseFloat(data.allocatedLeaves) : undefined,
+      leaveBalance: data.leaveBalance !== undefined ? parseFloat(data.leaveBalance) : undefined,
     };
 
     if (data.department) {
@@ -252,6 +267,17 @@ export class EmployeeService {
       }
     }
 
+    if (data.role) {
+      if (currentUser && currentUser.role !== Role.DIRECTOR && currentUser.role !== Role.HR) {
+        // Prevent unauthorized role modifications
+      } else {
+        await prisma.user.update({
+          where: { id: employee.userId },
+          data: { role: data.role }
+        });
+      }
+    }
+
     return employeeRepository.update(id, updateData);
   }
 
@@ -278,6 +304,81 @@ export class EmployeeService {
     }
 
     return employee;
+  }
+
+  /**
+   * Get team details for currently logged in employee (manager, peers, subordinates).
+   */
+  async getMyTeam(currentUser?: { userId: string; role: Role }) {
+    if (!currentUser) {
+      throw new ForbiddenError(Messages.AUTH.FORBIDDEN);
+    }
+
+    const employee = await employeeRepository.findByUserId(currentUser.userId);
+    if (!employee) {
+      return { manager: null, peers: [], subordinates: [] };
+    }
+
+    // Fetch manager details
+    const manager = employee.managerId
+      ? await prisma.employee.findUnique({
+          where: { id: employee.managerId },
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                role: true,
+              },
+            },
+          },
+        })
+      : null;
+
+    // Fetch peers reporting to the same manager (excluding self)
+    const peers = employee.managerId
+      ? await prisma.employee.findMany({
+          where: {
+            managerId: employee.managerId,
+            id: { not: employee.id },
+            isActive: true,
+          },
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+                role: true,
+              },
+            },
+          },
+        })
+      : [];
+
+    // Fetch subordinates reporting directly to this employee
+    const subordinates = await prisma.employee.findMany({
+      where: {
+        managerId: employee.id,
+        isActive: true,
+      },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    return { manager, peers, subordinates };
   }
 }
 
