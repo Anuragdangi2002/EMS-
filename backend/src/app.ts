@@ -10,7 +10,7 @@ import { corsConfig } from './config/cors';
 import { helmetConfig } from './config/helmet';
 import { logger } from './utils/logger.util';
 import { sendSuccess } from './utils/response.util';
-import { Messages } from '../src/constants/messages';
+import { Messages } from './constants/messages';
 import { NotFoundError } from './utils/error.util';
 import { errorHandler } from './middlewares/error.middleware';
 import apiRouter from './routes';
