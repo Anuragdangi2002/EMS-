@@ -1,6 +1,9 @@
 {
   "name": "ems-backend",
   "version": "1.0.0",
+  "engines": {
+  "node": "20.x"
+},
   "description": "Enterprise Employee Management System (EMS) Backend Foundation",
   "main": "dist/server.js",
   "scripts": {
