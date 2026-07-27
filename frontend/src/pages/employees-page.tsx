@@ -385,15 +385,84 @@ function EmployeeDetailsModal({ employee: initialEmployee, close }: { employee?:
   )
 }
 
+function DeactivateConfirmModal({ employee, onConfirm, close, loading }: { employee: Employee; onConfirm: () => void; close: () => void; loading: boolean }) {
+  const [typedCode, setTypedCode] = useState('');
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-md rounded-xl bg-white shadow-2xl border border-slate-100 p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 border border-red-100">
+            <Trash2 className="size-5" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-slate-900">Deactivate Employee</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Are you sure you want to deactivate this employee? This will suspend their account access and mark their profile as inactive.
+            </p>
+            
+            <div className="mt-4 rounded-lg bg-slate-50 border border-slate-100 p-4 text-left">
+              <div className="grid grid-cols-2 gap-y-2 text-xs">
+                <span className="font-semibold text-slate-500">Name:</span>
+                <span className="text-slate-800 font-medium">{employee.firstName} {employee.lastName}</span>
+                
+                <span className="font-semibold text-slate-500">Employee Code:</span>
+                <span className="text-slate-800 font-mono font-medium">{employee.employeeCode}</span>
+                
+                <span className="font-semibold text-slate-500">Designation:</span>
+                <span className="text-slate-800 font-medium">{employee.designation}</span>
+              </div>
+            </div>
+
+            <label className="mt-5 block text-sm font-medium text-slate-700">
+              Type the Employee Code <span className="font-mono text-red-600 font-bold">{employee.employeeCode}</span> to confirm:
+              <Input
+                required
+                type="text"
+                placeholder="Enter code"
+                className="mt-2 font-mono text-sm tracking-widest placeholder:font-sans placeholder:tracking-normal"
+                value={typedCode}
+                onChange={e => setTypedCode(e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3 border-t pt-4 bg-white rounded-b-xl">
+          <Button type="button" variant="outline" onClick={close}>Cancel</Button>
+          <Button
+            type="button"
+            className="bg-red-600 hover:bg-red-700 text-white"
+            loading={loading}
+            disabled={typedCode !== employee.employeeCode}
+            onClick={onConfirm}
+          >
+            Deactivate
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function EmployeesPage() {
   const { hasRole } = useAuth()
   const client = useQueryClient()
   const [adding, setAdding] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<EmployeeWithContact | null | undefined>()
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeWithContact>()
+  const [deactivatingEmployee, setDeactivatingEmployee] = useState<Employee | null>(null)
   const [search, setSearch] = useState('')
   const query = useQuery({ queryKey: ['employees'], queryFn: employeeService.list })
-  const remove = useMutation({ mutationFn: employeeService.remove, onSuccess: () => { void client.invalidateQueries({ queryKey: ['employees'] }); toast.success('Employee deactivated') }, onError: () => toast.error('Unable to deactivate employee') })
+  const remove = useMutation({
+    mutationFn: employeeService.remove,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['employees'] });
+      toast.success('Employee deactivated');
+      setDeactivatingEmployee(null);
+    },
+    onError: () => toast.error('Unable to deactivate employee')
+  })
   const rows = useMemo(() => (query.data ?? []).filter(employee => `${employee.firstName} ${employee.lastName} ${employee.employeeCode} ${employee.designation}`.toLowerCase().includes(search.toLowerCase())), [query.data, search])
 
   const columns: ColumnDef<Employee>[] = [
@@ -426,7 +495,7 @@ export function EmployeesPage() {
             </button>
           )}
           {hasRole('ADMIN', 'HR') && (
-            <button aria-label="Deactivate employee" disabled={remove.isPending} onClick={() => { if (confirm('Deactivate this employee?')) remove.mutate(context.row.original.id) }} className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50">
+            <button aria-label="Deactivate employee" disabled={remove.isPending} onClick={() => setDeactivatingEmployee(context.row.original)} className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50">
               <Trash2 className="size-4" />
             </button>
           )}
@@ -450,6 +519,14 @@ export function EmployeesPage() {
       {adding && <EmployeeModal close={() => setAdding(false)} />}
       {editingEmployee && <EmployeeModal employee={editingEmployee} close={() => setEditingEmployee(undefined)} />}
       {selectedEmployee && <EmployeeDetailsModal employee={selectedEmployee} close={() => setSelectedEmployee(undefined)} />}
+      {deactivatingEmployee && (
+        <DeactivateConfirmModal
+          employee={deactivatingEmployee}
+          close={() => setDeactivatingEmployee(null)}
+          loading={remove.isPending}
+          onConfirm={() => remove.mutate(deactivatingEmployee.id)}
+        />
+      )}
     </>
   )
 }
