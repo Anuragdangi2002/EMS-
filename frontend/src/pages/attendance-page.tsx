@@ -1,111 +1,198 @@
-import { useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { ColumnDef } from '@tanstack/react-table'
-import { Clock, LogIn, LogOut } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { Badge, Button, Card, Empty } from '../components/ui'
-import { DataTable } from '../components/data-table'
-import { PageHeader } from '../layouts/app-layout'
-import { attendanceService, employeeService } from '../services/ems.service'
-import type { Attendance } from '../types/models'
-import { date, time, title } from '../utils/format'
-import { useAuth } from '../store/auth-context'
+import { useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Clock, LogIn, LogOut } from "lucide-react";
+import toast from "react-hot-toast";
+import { Badge, Button, Card, Empty } from "../components/ui";
+import { DataTable } from "../components/data-table";
+import { PageHeader } from "../layouts/app-layout";
+import { attendanceService, employeeService } from "../services/ems.service";
+import type { Attendance } from "../types/models";
+import { date, time, title } from "../utils/format";
+import { useAuth } from "../store/auth-context";
 
 export function AttendancePage() {
   const { user, hasRole } = useAuth();
   const client = useQueryClient();
-  const isManager = user?.role === 'MANAGER';
-  const isAdminOrHr = hasRole('ADMIN', 'HR');
+  const isManager = user?.role === "MANAGER";
+  const isAdminOrHr = hasRole("ADMIN", "HR");
 
   const profile = useQuery({
-    queryKey: ['employee', 'me'],
+    queryKey: ["employee", "me"],
     queryFn: employeeService.me,
     enabled: !isAdminOrHr,
-    retry: false
+    retry: false,
   });
 
   const myAttendance = useQuery({
-    queryKey: ['attendance', 'my', profile.data?.id],
+    queryKey: ["attendance", "my", profile.data?.id],
     queryFn: () => attendanceService.history(profile.data!.id),
-    enabled: !!profile.data?.id
+    enabled: !!profile.data?.id,
   });
 
   const teamAttendance = useQuery({
-    queryKey: ['attendance', 'team'],
+    queryKey: ["attendance", "team"],
     queryFn: () => attendanceService.list(),
-    enabled: isAdminOrHr || isManager
+    enabled: isAdminOrHr || isManager,
   });
 
   const checkIn = useMutation({
     mutationFn: attendanceService.checkIn,
     onSuccess: () => {
-      toast.success('Checked in');
-      void client.invalidateQueries({ queryKey: ['attendance'] });
+      toast.success("Checked in");
+      void client.invalidateQueries({ queryKey: ["attendance"] });
     },
-    onError: () => toast.error('Check-in could not be completed')
+    onError: () => toast.error("Check-in could not be completed"),
   });
 
   const checkOut = useMutation({
     mutationFn: attendanceService.checkOut,
     onSuccess: () => {
-      toast.success('Checked out');
-      void client.invalidateQueries({ queryKey: ['attendance'] });
+      toast.success("Checked out");
+      void client.invalidateQueries({ queryKey: ["attendance"] });
     },
-    onError: () => toast.error('Check-out could not be completed')
+    onError: () => toast.error("Check-out could not be completed"),
   });
 
   const todayStr = new Date().toDateString();
-  const record = myAttendance.data?.find(x => new Date(x.date).toDateString() === todayStr);
+  const record = myAttendance.data?.find(
+    (x) => new Date(x.date).toDateString() === todayStr,
+  );
 
-  const lastLogType = record?.logs && record.logs.length > 0
-    ? record.logs[record.logs.length - 1].type
-    : 'CHECK_OUT';
+  const lastLogType =
+    record?.logs && record.logs.length > 0
+      ? record.logs[record.logs.length - 1].type
+      : "CHECK_OUT";
 
-  const isClockedIn = lastLogType === 'CHECK_IN';
+  const isClockedIn = lastLogType === "CHECK_IN";
 
-  const myColumns: ColumnDef<Attendance>[] = useMemo(() => [
-    { accessorKey: 'date', header: 'Date', cell: x => date(x.getValue<string>()) },
-    { accessorKey: 'checkIn', header: 'First check in', cell: x => time(x.getValue<string | null>()) },
-    { accessorKey: 'checkOut', header: 'Last check out', cell: x => time(x.getValue<string | null>()) },
-    { id: 'logs', header: 'Daily logs history', cell: (x: any) => formatLogs(x.row.original.logs) },
-    { accessorKey: 'totalHours', header: 'Working hours', cell: x => x.getValue<number | null>()?.toFixed(2) ?? '—' },
-    { accessorKey: 'overtimeHours', header: 'Overtime', cell: x => x.getValue<number | null>()?.toFixed(2) ?? '—' },
-    { accessorKey: 'status', header: 'Status', cell: x => <Badge tone={x.getValue() === 'LATE' ? 'yellow' : 'green'}>{title(x.getValue<string>())}</Badge> }
-  ], []);
+  const myColumns: ColumnDef<Attendance>[] = useMemo(
+    () => [
+      {
+        accessorKey: "date",
+        header: "Date",
+        cell: (x) => date(x.getValue<string>()),
+      },
+      {
+        accessorKey: "checkIn",
+        header: "First check in",
+        cell: (x) => time(x.getValue<string | null>()),
+      },
+      {
+        accessorKey: "checkOut",
+        header: "Last check out",
+        cell: (x) => time(x.getValue<string | null>()),
+      },
+      {
+        id: "logs",
+        header: "Daily logs history",
+        cell: (x: any) => formatLogs(x.row.original.logs),
+      },
+      {
+        accessorKey: "totalHours",
+        header: "Working hours",
+        cell: (x) => x.getValue<number | null>()?.toFixed(2) ?? "—",
+      },
+      {
+        accessorKey: "overtimeHours",
+        header: "Overtime",
+        cell: (x) => x.getValue<number | null>()?.toFixed(2) ?? "—",
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: (x) => (
+          <Badge tone={x.getValue() === "LATE" ? "yellow" : "green"}>
+            {title(x.getValue<string>())}
+          </Badge>
+        ),
+      },
+    ],
+    [],
+  );
 
-  const teamColumns: ColumnDef<Attendance>[] = useMemo(() => [
-    { accessorKey: 'date', header: 'Date', cell: x => date(x.getValue<string>()) },
-    {
-      id: 'employee',
-      header: 'Employee',
-      cell: (x: any) => x.row.original.employee ? `${x.row.original.employee.firstName} ${x.row.original.employee.lastName}` : x.row.original.employeeId
-    },
-    { accessorKey: 'checkIn', header: 'First check in', cell: x => time(x.getValue<string | null>()) },
-    { accessorKey: 'checkOut', header: 'Last check out', cell: x => time(x.getValue<string | null>()) },
-    { id: 'logs', header: 'Daily logs history', cell: (x: any) => formatLogs(x.row.original.logs) },
-    { accessorKey: 'totalHours', header: 'Working hours', cell: x => x.getValue<number | null>()?.toFixed(2) ?? '—' },
-    { accessorKey: 'overtimeHours', header: 'Overtime', cell: x => x.getValue<number | null>()?.toFixed(2) ?? '—' },
-    { accessorKey: 'status', header: 'Status', cell: x => <Badge tone={x.getValue() === 'LATE' ? 'yellow' : 'green'}>{title(x.getValue<string>())}</Badge> }
-  ], []);
+  const teamColumns: ColumnDef<Attendance>[] = useMemo(
+    () => [
+      {
+        accessorKey: "date",
+        header: "Date",
+        cell: (x) => date(x.getValue<string>()),
+      },
+      {
+        id: "employee",
+        header: "Employee",
+        cell: (x: any) =>
+          x.row.original.employee
+            ? `${x.row.original.employee.firstName} ${x.row.original.employee.lastName}`
+            : x.row.original.employeeId,
+      },
+      {
+        accessorKey: "checkIn",
+        header: "First check in",
+        cell: (x) => time(x.getValue<string | null>()),
+      },
+      {
+        accessorKey: "checkOut",
+        header: "Last check out",
+        cell: (x) => time(x.getValue<string | null>()),
+      },
+      {
+        id: "logs",
+        header: "Daily logs history",
+        cell: (x: any) => formatLogs(x.row.original.logs),
+      },
+      {
+        accessorKey: "totalHours",
+        header: "Working hours",
+        cell: (x) => x.getValue<number | null>()?.toFixed(2) ?? "—",
+      },
+      {
+        accessorKey: "overtimeHours",
+        header: "Overtime",
+        cell: (x) => x.getValue<number | null>()?.toFixed(2) ?? "—",
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: (x) => (
+          <Badge tone={x.getValue() === "LATE" ? "yellow" : "green"}>
+            {title(x.getValue<string>())}
+          </Badge>
+        ),
+      },
+    ],
+    [],
+  );
 
-  const clockActions = !isAdminOrHr && profile.data ? (
-    <div className="flex gap-2">
-      <Button className="bg-emerald-600 hover:bg-emerald-700" loading={checkIn.isPending} disabled={isClockedIn} onClick={() => checkIn.mutate(profile.data!.id)}>
-        <LogIn className="size-4" />
-        Check in
-      </Button>
-      <Button loading={checkOut.isPending} disabled={!record || !isClockedIn} onClick={() => checkOut.mutate(profile.data!.id)}>
-        <LogOut className="size-4" />
-        Check out
-      </Button>
-    </div>
-  ) : undefined;
+  const clockActions =
+    !isAdminOrHr && profile.data ? (
+      <div className="flex gap-2">
+        <Button
+          className="bg-emerald-600 hover:bg-emerald-700"
+          loading={checkIn.isPending}
+          disabled={isClockedIn}
+          onClick={() => checkIn.mutate(profile.data!.id)}
+        >
+          <LogIn className="size-4" />
+          Check in
+        </Button>
+        <Button
+          loading={checkOut.isPending}
+          disabled={!record || !isClockedIn}
+          onClick={() => checkOut.mutate(profile.data!.id)}
+        >
+          <LogOut className="size-4" />
+          Check out
+        </Button>
+      </div>
+    ) : undefined;
 
   const noProfileWarning = !isAdminOrHr && profile.isError && (
     <Card className="mb-6">
       <div className="flex gap-3 text-sm text-amber-800 text-left">
         <Clock className="size-5 shrink-0" />
-        No employee profile is linked to this account yet. Attendance actions need the employee profile API to succeed.
+        No employee profile is linked to this account yet. Attendance actions
+        need the employee profile API to succeed.
       </div>
     </Card>
   );
@@ -113,12 +200,19 @@ export function AttendancePage() {
   if (isAdminOrHr) {
     return (
       <>
-        <PageHeader title="Attendance" description="Daily attendance across the workforce." />
+        <PageHeader
+          title="Attendance"
+          description="Daily attendance across the workforce."
+        />
         <Card>
           {teamAttendance.isLoading ? (
             <Empty>Loading attendance…</Empty>
           ) : (
-            <DataTable data={teamAttendance.data ?? []} columns={teamColumns} empty="No attendance entries are available." />
+            <DataTable
+              data={teamAttendance.data ?? []}
+              columns={teamColumns}
+              empty="No attendance entries are available."
+            />
           )}
         </Card>
       </>
@@ -128,21 +222,33 @@ export function AttendancePage() {
   if (isManager) {
     return (
       <>
-        <PageHeader title="Attendance" description="Manage your team's attendance and log your own time." actions={clockActions} />
+        <PageHeader
+          title="Attendance"
+          description="Manage your team's attendance and log your own time."
+          actions={clockActions}
+        />
         {noProfileWarning}
         <div className="space-y-6">
           <Card title="My Attendance History">
             {myAttendance.isLoading ? (
               <Empty>Loading attendance…</Empty>
             ) : (
-              <DataTable data={myAttendance.data ?? []} columns={myColumns} empty="No personal attendance entries found." />
+              <DataTable
+                data={myAttendance.data ?? []}
+                columns={myColumns}
+                empty="No personal attendance entries found."
+              />
             )}
           </Card>
           <Card title="Team Attendance (Subordinates)">
             {teamAttendance.isLoading ? (
               <Empty>Loading attendance…</Empty>
             ) : (
-              <DataTable data={teamAttendance.data ?? []} columns={teamColumns} empty="No team attendance entries found today." />
+              <DataTable
+                data={teamAttendance.data ?? []}
+                columns={teamColumns}
+                empty="No team attendance entries found today."
+              />
             )}
           </Card>
         </div>
@@ -153,13 +259,21 @@ export function AttendancePage() {
   // Regular Employee
   return (
     <>
-      <PageHeader title="Attendance" description="Check in, check out, and review your time." actions={clockActions} />
+      <PageHeader
+        title="Attendance"
+        description="Check in, check out, and review your time."
+        actions={clockActions}
+      />
       {noProfileWarning}
       <Card>
         {myAttendance.isLoading ? (
           <Empty>Loading attendance…</Empty>
         ) : (
-          <DataTable data={myAttendance.data ?? []} columns={myColumns} empty="No attendance entries are available." />
+          <DataTable
+            data={myAttendance.data ?? []}
+            columns={myColumns}
+            empty="No attendance entries are available."
+          />
         )}
       </Card>
     </>
@@ -167,22 +281,26 @@ export function AttendancePage() {
 }
 
 function formatLogs(logs: any[]) {
-  if (!logs || logs.length === 0) return <span className="text-slate-400">—</span>;
+  if (!logs || logs.length === 0)
+    return <span className="text-slate-400">—</span>;
   return (
     <div className="flex flex-wrap gap-1">
       {logs.map((log: any, idx: number) => {
-        const timeStr = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const isIn = log.type === 'CHECK_IN';
+        const timeStr = new Date(log.timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const isIn = log.type === "CHECK_IN";
         return (
           <span
             key={idx}
             className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide border shadow-sm ${
               isIn
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                : 'bg-slate-50 text-slate-600 border-slate-200'
+                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                : "bg-slate-50 text-slate-600 border-slate-200"
             }`}
           >
-            {isIn ? 'In' : 'Out'}: {timeStr}
+            {isIn ? "In" : "Out"}: {timeStr}
           </span>
         );
       })}
