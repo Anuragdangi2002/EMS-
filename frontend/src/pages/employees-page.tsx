@@ -425,7 +425,7 @@ export function EmployeesPage() {
               <Pencil className="size-4" />
             </button>
           )}
-          {hasRole('ADMIN') && (
+          {hasRole('ADMIN', 'HR') && (
             <button aria-label="Deactivate employee" disabled={remove.isPending} onClick={() => { if (confirm('Deactivate this employee?')) remove.mutate(context.row.original.id) }} className="rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50">
               <Trash2 className="size-4" />
             </button>

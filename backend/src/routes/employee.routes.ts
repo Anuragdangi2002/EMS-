@@ -85,7 +85,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorize(Role.DIRECTOR),
+  authorize(Role.DIRECTOR, Role.HR),
   employeeController.deleteEmployee
 );
 

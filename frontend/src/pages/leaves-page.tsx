@@ -133,7 +133,7 @@ export function LeavesPage() {
     {
       id: 'actions',
       header: '',
-      cell: x => (hasRole('ADMIN', 'HR', 'MANAGER') && x.row.original.status === 'PENDING') ? (
+      cell: x => (hasRole('ADMIN', 'HR', 'MANAGER') && x.row.original.status === 'PENDING' && (!profile.data || x.row.original.employeeId !== profile.data.id)) ? (
         <div className="flex gap-1">
           <button onClick={() => status.mutate({ id: x.row.original.id, state: 'APPROVED' })} className="rounded p-1.5 text-emerald-700 hover:bg-emerald-50"><Check className="size-4" /></button>
           <button onClick={() => status.mutate({ id: x.row.original.id, state: 'REJECTED' })} className="rounded p-1.5 text-red-700 hover:bg-red-50"><X className="size-4" /></button>
@@ -146,8 +146,8 @@ export function LeavesPage() {
     <>
       <PageHeader
         title="Leave management"
-        description={hasRole('ADMIN', 'HR', 'MANAGER') ? 'Review and process employee leave requests.' : 'Submit time-off requests.'}
-        actions={!hasRole('ADMIN', 'HR', 'MANAGER') ? <Button onClick={() => setApplyOpen(true)}><Plus className="size-4" />Apply for leave</Button> : undefined}
+        description={hasRole('ADMIN', 'HR') ? 'Review and process employee leave requests.' : hasRole('MANAGER') ? 'Review subordinate requests or submit your own.' : 'Submit time-off requests.'}
+        actions={!hasRole('ADMIN', 'HR') ? <Button onClick={() => setApplyOpen(true)}><Plus className="size-4" />Apply for leave</Button> : undefined}
       />
       {!hasRole('ADMIN', 'HR') && profile.data && (
         <div className="mb-6 grid gap-4 sm:grid-cols-3">

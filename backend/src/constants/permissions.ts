@@ -241,7 +241,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, PermissionKey[]> = {
   HR: [
     Permissions.USER_CREATE, Permissions.USER_READ, Permissions.USER_UPDATE,
     Permissions.EMPLOYEE_CREATE, Permissions.EMPLOYEE_READ, Permissions.EMPLOYEE_UPDATE,
-    Permissions.EMPLOYEE_READ_OWN, Permissions.EMPLOYEE_UPDATE_OWN,
+    Permissions.EMPLOYEE_DELETE, Permissions.EMPLOYEE_READ_OWN, Permissions.EMPLOYEE_UPDATE_OWN,
     Permissions.DEPARTMENT_READ, Permissions.DESIGNATION_READ,
     Permissions.OFFICE_LOCATION_READ, Permissions.SHIFT_READ,
     Permissions.HOLIDAY_CREATE, Permissions.HOLIDAY_READ, Permissions.HOLIDAY_UPDATE, Permissions.HOLIDAY_DELETE,

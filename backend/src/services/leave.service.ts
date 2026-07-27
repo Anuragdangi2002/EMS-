@@ -60,10 +60,17 @@ export class LeaveService {
       const { prisma } = await import("../config/prisma");
       return prisma.leave.findMany({
         where: {
-          employee: {
-            managerId: managerEmployee.id,
-            isActive: true,
-          },
+          OR: [
+            {
+              employeeId: managerEmployee.id,
+            },
+            {
+              employee: {
+                managerId: managerEmployee.id,
+                isActive: true,
+              },
+            },
+          ],
         },
         include: {
           employee: true,
