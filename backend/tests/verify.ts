@@ -1,7 +1,7 @@
 import { User, Role, UserStatus } from '@prisma/client';
-import { userRepository } from '../repositories/user.repository';
-import { authService } from '../services/auth.service';
-import { hashToken } from '../utils/auth/token.util';
+import { userRepository } from '../src/repositories/user.repository';
+import { authService } from '../src/services/auth.service';
+import { hashToken } from '../src/utils/auth/token.util';
 import assert from 'assert';
 
 console.log('🧪 Starting EMS Foundation Verification Suite...');

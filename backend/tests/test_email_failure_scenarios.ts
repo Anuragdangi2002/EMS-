@@ -1,6 +1,6 @@
-import { emailService } from "../services/email/email.service";
-import * as transporterModule from "../services/email/transporter";
-import { logger } from "../utils/logger.util";
+import { emailService } from "../src/services/email/email.service";
+import * as transporterModule from "../src/services/email/transporter";
+import { logger } from "../src/utils/logger.util";
 
 async function testFailureScenarios() {
   logger.info("🧪 [TEST] Starting Failure Scenarios Verification...");

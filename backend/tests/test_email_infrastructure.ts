@@ -1,7 +1,7 @@
-import { compileTemplate } from "../services/email/email.templates";
-import { emailService } from "../services/email/email.service";
-import { getTransporter } from "../services/email/transporter";
-import { logger } from "../utils/logger.util";
+import { compileTemplate } from "../src/services/email/email.templates";
+import { emailService } from "../src/services/email/email.service";
+import { getTransporter } from "../src/services/email/transporter";
+import { logger } from "../src/utils/logger.util";
 
 async function testEmailInfrastructure() {
   logger.info("🧪 [TEST] Starting SMTP Email Infrastructure Verification Suite...");

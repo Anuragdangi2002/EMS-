@@ -2,14 +2,19 @@ async function testAuth() {
   const baseURL = 'http://localhost:5000/api/v1';
   console.log('Testing authentication flow using native fetch...');
 
+  const hrEmail = process.env.INITIAL_HR_EMAIL || 'hr@gmail.com';
+  const hrPassword = process.env.INITIAL_HR_PASSWORD || 'Password123!';
+
+  console.log(`Using email: ${hrEmail} (read from INITIAL_HR_EMAIL)`);
+
   // 1. Login
   console.log('\n--- 1. POST /auth/login ---');
   const loginRes = await fetch(`${baseURL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      email: 'hr@gmail.com',
-      password: 'Password123!'
+      email: hrEmail,
+      password: hrPassword
     })
   });
 

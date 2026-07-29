@@ -1,7 +1,7 @@
-import { prisma } from "../config/prisma";
-import { holidayService } from "../services/holiday.service";
-import { leaveService } from "../services/leave.service";
-import { employeeService } from "../services/employee.service";
+import { prisma } from "../src/config/prisma";
+import { holidayService } from "../src/services/holiday.service";
+import { leaveService } from "../src/services/leave.service";
+import { employeeService } from "../src/services/employee.service";
 import { LeaveStatus, Role } from "@prisma/client";
 
 async function testFeatures() {
