@@ -9,7 +9,7 @@ const AuthContext = createContext<AuthState | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-
+ 
   useEffect(() => {
     // Register the unauthorized error callback to invalidate user session state
     onAuthError(() => {

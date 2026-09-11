@@ -12,7 +12,7 @@ let authErrorListener: AuthErrorListener | null = null
 export const onAuthError = (listener: AuthErrorListener) => {
   authErrorListener = listener
 }
-
+  
 export const triggerAuthError = () => {
   if (authErrorListener) authErrorListener()
 }
